@@ -136,7 +136,7 @@ void onWSEvent(WStype_t type, uint8_t *payload, size_t length)
     Serial.println("Connected!");
     break;
   case WStype_TEXT:
-    Serial.printf("Received text: %s", payload);
+    Serial.printf("Received text: %s\n", payload);
     handleMessage(payload);
     break;
   case WStype_BIN:

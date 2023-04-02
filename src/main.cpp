@@ -1,17 +1,21 @@
+#define DEBUG_WEBSOCKETSCLIENT
 #include <Arduino.h>
 #include <WiFiMulti.h>
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
+
 
 #define WIFI_SSID "Portillovi"
 #define WIFI_PASSWORD "V3n3z*3l4"
 
 #define WS_HOST "aphrodite-production.up.railway.app"
-#define WS_PORT 6192
+#define WS_PORT 443
 #define WS_PATH "/conn/perrito"
 
 #define JSON_DOC_SIZE 2048
 #define MSG_SIZE 256
+
 
 WiFiMulti wifiMulti;
 WebSocketsClient webSocket;
@@ -135,14 +139,54 @@ void onWSEvent(WStype_t type, uint8_t *payload, size_t length)
     Serial.printf("Received text: %s", payload);
     handleMessage(payload);
     break;
+  case WStype_BIN:
+    Serial.printf("Received bin: %s", payload);
+    break;
+  case WStype_ERROR:
+    Serial.println("Error!");
+    break;
+  case WStype_FRAGMENT_TEXT_START:
+    Serial.println("Fragment start!");
+    break;
+  case WStype_FRAGMENT_BIN_START:
+    Serial.println("Fragment start!");
+    break;
+  case WStype_FRAGMENT:
+    Serial.println("Fragment!");
+    break;
+  case WStype_FRAGMENT_FIN:
+    Serial.println("Fragment end!");
+    break;
   default:
     break;
   }
 }
 
+void ping() {
+   if((WiFi.status() == WL_CONNECTED))
+  {
+    HTTPClient client;
+
+    client.begin("https://aphrodite-production.up.railway.app/ping");
+    int response = client.GET();
+
+    if (response > 0) {
+      String payload = client.getString();
+      Serial.println(payload);
+    }
+    else {
+      Serial.println("Error on request");
+    }
+  }
+  else {
+    Serial.println("Connection Lost...");
+  }
+  delay(1000);
+}
+
 void setup()
 {
-  Serial.begin(921600);
+  Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
 
   wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
@@ -153,14 +197,9 @@ void setup()
   }
   Serial.printf("\nConnected to %s\n", WIFI_SSID);
   Serial.println(WiFi.localIP());
-  IPAddress ip;
-  if (!WiFi.hostByName("aphrodite-production.up.railway.app", ip)) {
-    Serial.println("Failed to resolve hostname");
-    while (1);
-  }
 
   // Initialize WebSocket client
-  webSocket.begin(ip, 80, "/conn/perrito");
+  webSocket.beginSSL(WS_HOST, WS_PORT, WS_PATH, "", "wss");
   webSocket.onEvent(onWSEvent);
 }
 
